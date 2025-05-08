@@ -28,6 +28,7 @@ int Height = 512;
 std::vector<float> OutputImage;
 // -------------------------------------------------
 
+//Create a circle
 void create_scene(int*& gIndexBuffer, vec4*& gVertexBuffer, int* vertexNum, int* triangleNum)
 {
 	int width = 32;
@@ -118,10 +119,13 @@ void render()
 	//Instead we draw to another buffer and copy this to the
 	//framebuffer using glDrawPixels(...) every refresh
 
+	// Arrays for the triangle's vertices and indices
 	int* gIndexBuffer;
 	vec4* gVertexBuffer;
 	int vertexNum = 0, triangleNum = 0;
 	create_scene(gIndexBuffer, gVertexBuffer, &vertexNum, &triangleNum);
+
+	// Model scale matrix and translation matrix
 	mat4 modelScale(
 		2, 0, 0, 0,
 		0, 2, 0, 0,
@@ -135,6 +139,8 @@ void render()
 		0, 0, -7, 1
 	);
 	mat4 modelTransform = modeltranslate * modelScale;
+
+	//CameraTransform
 	vec3 e(0, 0, 0);
 	vec3 u(1, 0, 0);
 	vec3 v(0, 1, 0);
@@ -148,6 +154,7 @@ void render()
 	);
 	cameraTransform = inverse(cameraTransform);
 
+	//PerspectiveTransform
 	float l = -0.1;
 	float r = 0.1;
 	float b = -0.1;
@@ -169,6 +176,7 @@ void render()
 	);
 	mat4 perspectiveTransform = p2 * p1;
 
+	//ViewportTransform
 	int nx = 512;
 	int ny = 512;
 
@@ -179,15 +187,17 @@ void render()
 		(nx - 1) / 2, (ny - 1) / 2, 0, 1
 	);
 
+	// Transform each point
 	for (int i = 0; i < vertexNum; i++) {
-		// Transform each point
 		gVertexBuffer[i] = perspectiveTransform * cameraTransform * modelTransform * gVertexBuffer[i];
 		gVertexBuffer[i] /= gVertexBuffer[i].w;
 		gVertexBuffer[i] = viewportTransform * gVertexBuffer[i];
 	}
 	vector<vector<float>> depthBuffer(ny, vector<float>(nx, INF));
 
+	// For each triangle, perform the following operations
 	for (int i = 0; i < triangleNum; i++) {
+		// Check if a point is inside the triangle
 		vec4 t1 = gVertexBuffer[gIndexBuffer[3 * i + 0]];
 		vec4 t2 = gVertexBuffer[gIndexBuffer[3 * i + 1]];
 		vec4 t3 = gVertexBuffer[gIndexBuffer[3 * i + 2]];
@@ -215,9 +225,10 @@ void render()
 		for (int y = ymin; y <= ymax; y++) {
 			for (int x = xmin; x <= xmax; x++) {
 				if (b >= 0 && r >= 0 && b + r <= 1) {
-					//mark triangle
+					//Mark point
 					float a = 1 - b - r;
 					float depth = t1.z * a + t2.z * b + t3.z * r;
+					// Update if the depth is lower
 					if (depthBuffer[y][x] > depth) {
 						depthBuffer[y][x] = depth;
 					}
@@ -241,7 +252,9 @@ void render()
 			// --- Implement your code here to generate the image
 			// ---------------------------------------------------
 			vec3 color = glm::vec3(0.0f, 0.0f, 0.0f);
-			if (depthBuffer[j][i] != INF) { /// If it's not the initial value
+
+			// Fill with white if not the initial value
+			if (depthBuffer[j][i] != INF) { 
 				color = vec3(1.0f, 1.0f, 1.0f);
 			}
 
